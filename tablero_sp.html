@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Productividad SP — IPS</title>
+<style>
+  /* ── TOKENS ── */
+  :root {
+    --verde:      #1B6B5A;
+    --verde-mid:  #2E9E80;
+    --verde-light:#C8EDE5;
+    --verde-pale: #EEF7F4;
+    --oro:        #BA7517;
+    --oro-pale:   #FEF6E4;
+    --azul:       #185FA5;
+    --azul-pale:  #EBF4FD;
+    --ok:         #1D9E75;
+    --warn:       #D97706;
+    --danger:     #DC2626;
+    --bg:         #F4F7F5;
+    --surface:    #FFFFFF;
+    --border:     #E2EDE9;
+    --text:       #1A2A24;
+    --muted:      #6B8F82;
+    --font:       'Segoe UI', system-ui, sans-serif;
+    --mono:       'Consolas', monospace;
+    --radius:     10px;
+    --shadow:     0 1px 4px rgba(27,107,90,.08), 0 4px 16px rgba(27,107,90,.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* ── LAYOUT ── */
+  header { background: var(--verde); padding: 0 1.5rem; display: flex; align-items: center; gap: 1rem; height: 56px; }
+  header h1 { color: #fff; font-size: 15px; font-weight: 500; flex: 1; letter-spacing: .01em; }
+  header .badge { background: rgba(255,255,255,.15); color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+
+  .shell { max-width: 1100px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+
+  /* ── MES SELECTOR ── */
+  .mes-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .mes-bar label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
+  .mes-bar select, .mes-bar button { font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; background: var(--surface); color: var(--text); cursor: pointer; }
+  .mes-bar button { background: var(--verde); color: #fff; border-color: var(--verde); font-weight: 500; }
+  .mes-bar button:hover { background: var(--verde-mid); }
+  .saved-pill { font-size: 11px; color: var(--ok); background: #e6f7ef; border-radius: 20px; padding: 3px 10px; display: none; }
+
+  /* ── KPIS ── */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .kpi { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .kpi .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
+  .kpi .v { font-size: 26px; font-weight: 600; line-height: 1; }
+  .kpi.ok .v { color: var(--ok); }
+  .kpi.warn .v { color: var(--warn); }
+  .kpi.bad .v { color: var(--danger); }
+  .kpi.neu .v { color: var(--verde); }
+
+  /* ── PERFIL CARD ── */
+  .pcard { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 1rem; overflow: hidden; }
+  .phdr { display: flex; align-items: center; gap: 12px; padding: 14px 18px; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; transition: background .15s; }
+  .phdr:hover { background: var(--verde-pale); }
+  .phdr.open { border-bottom-color: var(--border); }
+  .av { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  .pmeta { flex: 1; min-width: 0; }
+  .pmeta .nom { font-size: 14px; font-weight: 600; }
+  .pmeta .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .pbar-w { text-align: right; min-width: 100px; }
+  .pbar-l { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .pbar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; width: 100px; margin-left: auto; }
+  .pbar-f { height: 5px; border-radius: 3px; transition: width .4s; }
+  .chev { font-size: 18px; color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+  .collapsed .chev { transform: rotate(-90deg); }
+
+  /* ── TIPO STRIP ── */
+  .tstrip { display: flex; gap: 7px; padding: 8px 18px; background: var(--verde-pale); flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+  .tb { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
+  .t-est { background: #eaf3de; color: #27500a; }
+  .t-op  { background: #e6f1fb; color: #0c447c; }
+  .t-gc  { background: #faeeda; color: #633806; }
+  .t-an  { background: #fde8cc; color: #7d4e00; }
+  .t-nr  { background: #fcebeb; color: #791f1f; }
+
+  /* ── TABLE ── */
+  .act-wrap { overflow-x: auto; }
+  table.acts { width: 100%; border-collapse: collapse; min-width: 680px; }
+  table.acts th { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 8px 12px; background: var(--verde-pale); border-bottom: 1px solid var(--border); text-align: left; }
+  table.acts td { padding: 7px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.acts tr:last-child td { border-bottom: none; }
+  table.acts tr:hover td { background: #f8fdfb; }
+  .sec-lbl { background: var(--verde-pale) !important; }
+  .sec-lbl td { font-size: 10px; font-weight: 600; color: var(--verde); text-transform: uppercase; letter-spacing: .07em; padding: 5px 12px !important; }
+
+  /* tipo select */
+  select.ts { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px; border: 1px solid transparent; cursor: pointer; width: 100%; }
+  select.ts.t-est { background: #eaf3de; color: #27500a; border-color: #97c459; }
+  select.ts.t-op  { background: #e6f1fb; color: #0c447c; border-color: #85b7eb; }
+  select.ts.t-gc  { background: #faeeda; color: #633806; border-color: #ef9f27; }
+  select.ts.t-an  { background: #fde8cc; color: #7d4e00; border-color: #f0a06a; }
+  select.ts.t-nr  { background: #fcebeb; color: #791f1f; border-color: #f09595; }
+
+  /* cumplimiento select */
+  select.cs { font-size: 12px; padding: 4px 7px; border: 1px solid var(--border); border-radius: 7px; width: 100%; background: var(--surface); color: var(--text); }
+  select.cs.c-total   { background: #eaf3de; color: #27500a; border-color: #97c459; }
+  select.cs.c-parcial { background: #faeeda; color: #633806; border-color: #ef9f27; }
+  select.cs.c-sin     { background: #fcebeb; color: #791f1f; border-color: #f09595; }
+
+  input.qty { width: 52px; font-size: 12px; padding: 4px 6px; text-align: center; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); }
+  input.obs { width: 100%; font-size: 12px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); }
+  input.obs::placeholder { color: var(--muted); }
+
+  button.del { border: none; background: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 0 3px; line-height: 1; transition: color .15s; }
+  button.del:hover { color: var(--danger); }
+
+  /* ── ADD ROW ── */
+  .add-row { display: flex; gap: 8px; padding: 10px 18px; background: var(--verde-pale); border-top: 1px solid var(--border); align-items: center; flex-wrap: wrap; }
+  .add-row input[type=text] { flex: 1; min-width: 160px; font-size: 12px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); }
+  .add-row select { font-size: 12px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+  .add-row button { font-size: 12px; padding: 5px 14px; background: var(--verde); color: #fff; border: none; border-radius: 7px; cursor: pointer; font-weight: 500; }
+  .add-row button:hover { background: var(--verde-mid); }
+  .add-err { font-size: 11px; color: var(--danger); width: 100%; }
+
+  /* ── EXPORT ── */
+  .exp-bar { display: flex; gap: 10px; padding: 1rem 0; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--border); margin-top: .5rem; }
+  .exp-bar p { font-size: 12px; color: var(--muted); flex: 1; }
+  .exp-bar button { font-size: 13px; padding: 7px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; }
+  .btn-export { background: var(--verde); color: #fff; }
+  .btn-export:hover { background: var(--verde-mid); }
+  .btn-hist { background: var(--surface); color: var(--text); border: 1px solid var(--border) !important; border: none; }
+  pre.out { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; font-family: var(--mono); font-size: 11px; white-space: pre-wrap; margin-top: 8px; line-height: 1.6; color: var(--text); }
+  .copy-btn { font-size: 12px; padding: 5px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; cursor: pointer; margin-top: 8px; }
+  .copy-btn:hover { background: var(--verde-pale); }
+
+  /* ── HISTORIAL ── */
+  .hist-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 8px; }
+  .hist-row { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-m { font-weight: 600; min-width: 100px; }
+  .hist-s { color: var(--muted); flex: 1; }
+  .hist-row button { font-size: 11px; padding: 3px 10px; background: var(--verde-pale); color: var(--verde); border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    header { padding: 0 1rem; }
+    .shell { padding: 1rem .75rem 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📋 Productividad — Área Salud Pública IPS</h1>
+  <span class="badge">Coordinadora: Kelly Díaz Durán</span>
+</header>
+
+<div class="shell">
+
+  <div class="mes-bar">
+    <label>Período:</label>
+    <select id="sel-mes">
+      <option>Enero</option><option>Febrero</option><option>Marzo</option>
+      <option>Abril</option><option>Mayo</option><option>Junio</option>
+      <option>Julio</option><option>Agosto</option><option>Septiembre</option>
+      <option>Octubre</option><option>Noviembre</option><option>Diciembre</option>
+    </select>
+    <select id="sel-anio" style="width:80px">
+      <option>2025</option><option selected>2026</option><option>2027</option>
+    </select>
+    <button onclick="cargar()">↺ Cargar mes</button>
+    <span class="saved-pill" id="saved">✓ Guardado</span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+  <div id="main"></div>
+
+  <div class="exp-bar">
+    <p>Exporta el resumen del mes para pegar en un correo o documento de jefatura.</p>
+    <button class="btn-export" onclick="exportar()">⬇ Exportar resumen</button>
+    <button class="btn-hist" onclick="historial()">🕐 Historial de meses</button>
+  </div>
+  <div id="exp-out"></div>
+  <div id="hist-out"></div>
+
+</div>
+
+<script>
+const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+const TIPOS = {
+  est:{l:"Estratégico",  cls:"t-est"},
+  op: {l:"Operativo",    cls:"t-op"},
+  gc: {l:"Gestión casos",cls:"t-gc"},
+  an: {l:"Analítico",   cls:"t-an"},
+  nr: {l:"Normativo",    cls:"t-nr"}
+};
+
+const PERFILES_DEF = [
+  {
+    id:"deissy", nom:"Deissy Mendez", cargo:"Gestora Cohortes Vectoriales y Análisis Epidemiológico",
+    ini:"DM", color:"#BA7517", bg:"#FEF6E4", tcls:"t-an",
+    acts:[
+      {n:"Cohorte Dengue — seguimiento clínico activo",         t:"gc"},
+      {n:"Cohorte Malaria — verificación tratamiento",          t:"gc"},
+      {n:"Cohorte Leishmaniasis — seguimiento por tipo",        t:"gc"},
+      {n:"Cohorte Leptospirosis — seguimiento confirmados",     t:"gc"},
+      {n:"Cohorte Salud Mental — consolidado diario + %",       t:"an"},
+      {n:"Tablero IRA — análisis tendencia y alerta",           t:"an"},
+      {n:"Tablero Sarampión — análisis tendencia",              t:"an"},
+      {n:"Tablero oportunidad de notificación",                 t:"an"},
+      {n:"Morbilidad mensual IPS",                              t:"an"},
+      {n:"BAI semanal",                                         t:"op"},
+      {n:"Asistencia técnica a sedes SIVIGILA",                 t:"an"},
+      {n:"Requerimientos SIVIGILA / informes auditorías",       t:"op"},
+      {n:"Informe SENA (transitorio)",                          t:"op"},
+    ]
+  },
+  {
+    id:"angie", nom:"Angie Katerine Silva", cargo:"Liderazgo Técnico EISP — TB · Hansen · VIH · UA",
+    ini:"AK", color:"#3B6D11", bg:"#F2FAE8", tcls:"t-est",
+    acts:[
+      {n:"TB — consolidación, seguimiento e informes SIGIRES",  t:"nr"},
+      {n:"TB — depuración y validación base captación SR",      t:"nr"},
+      {n:"TB — gestión contactos y cierre de casos",            t:"gc"},
+      {n:"Hansen — consolidación programa y cohorte",           t:"gc"},
+      {n:"VIH — gestión citas prioritarias (meta <10 días)",    t:"gc"},
+      {n:"SIRC — casos asegurador, respuesta <72h",             t:"gc"},
+      {n:"Gestión correo — triaje y análisis de solicitudes",   t:"gc"},
+      {n:"Unidades de Análisis — planes con causa raíz",        t:"est"},
+      {n:"Asistencia técnica TB, Hansen, vectoriales",          t:"est"},
+      {n:"Inteligencia epidem. — análisis vectoriales con Deissy", t:"est"},
+    ]
+  },
+  {
+    id:"alismar", nom:"Alismar Luna", cargo:"Primer Contacto Estructurado y Soporte Operativo SP",
+    ini:"AL", color:"#185FA5", bg:"#EBF4FD", tcls:"t-gc",
+    acts:[
+      {n:"Sífilis — gestión de casos población general",              t:"gc"},
+      {n:"Primer contacto vectoriales (Dengue, Malaria, Leishm., Leptospirosis)", t:"gc"},
+      {n:"Otros eventos EISP — bases asegurador (a demanda)",         t:"gc"},
+      {n:"Apoyo VIH — primer llamado con protocolo",                  t:"gc"},
+      {n:"BAI semanal — recibida de Deissy",                         t:"op"},
+      {n:"SISVAN — ejecución y envío a red",                         t:"op"},
+      {n:"Informe SR FMS/NEPS/SURA",                                 t:"nr"},
+      {n:"Bitácoras UA — descarga SAP y organización",               t:"nr"},
+    ]
+  }
+];
+
+let S = {};
+
+function key(m,a){ return "sp_prod_"+a+"_"+m; }
+
+function cargar() {
+  const mes = document.getElementById("sel-mes").value;
+  const anio = document.getElementById("sel-anio").value;
+  const k = key(mes, anio);
+  let saved = null;
+  try { const raw = localStorage.getItem(k); if(raw) saved = JSON.parse(raw); } catch(e){}
+  S = { mes, anio, k, perfiles:{} };
+  PERFILES_DEF.forEach(p => {
+    const sp = saved?.perfiles?.[p.id];
+    S.perfiles[p.id] = {
+      collapsed: sp?.collapsed || false,
+      acts: sp?.acts || p.acts.map(a => ({n:a.n, t:a.t, base:true, cum:"", qty:"", obs:""}))
+    };
+  });
+  document.getElementById("exp-out").innerHTML = "";
+  document.getElementById("hist-out").innerHTML = "";
+  render();
+}
+
+function guardar() {
+  try {
+    localStorage.setItem(S.k, JSON.stringify(S));
+    const el = document.getElementById("saved");
+    el.style.display = "inline-block";
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.style.display = "none", 1800);
+  } catch(e) { alert("Tu navegador no permite guardar datos localmente. Activa el almacenamiento local o usa otro navegador."); }
+}
+
+function kpis_global() {
+  let tot=0,c=0,pa=0,sn=0;
+  Object.values(S.perfiles).forEach(ps => ps.acts.forEach(a => {
+    tot++; if(a.cum==="total")c++; else if(a.cum==="parcial")pa++; else if(a.cum==="sin")sn++;
+  }));
+  return {tot,c,pa,sn, pct: tot?Math.round(c/tot*100):0};
+}
+
+function perfil_pct(pid) {
+  const a = S.perfiles[pid]?.acts||[];
+  return a.length ? Math.round(a.filter(x=>x.cum==="total").length/a.length*100) : 0;
+}
+
+function tipos_cnt(acts) {
+  const r={est:0,op:0,gc:0,an:0,nr:0};
+  acts.forEach(a => { if(r[a.t]!==undefined) r[a.t]++; });
+  return r;
+}
+
+function render() {
+  renderKpis();
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  PERFILES_DEF.forEach(p => {
+    const ps = S.perfiles[p.id]; if(!ps) return;
+    const pc = perfil_pct(p.id);
+    const cnt = tipos_cnt(ps.acts);
+
+    const div = document.createElement("div");
+    div.className = "pcard";
+    div.id = "pc-"+p.id;
+
+    // Header
+    const hdr = document.createElement("div");
+    hdr.className = "phdr" + (ps.collapsed?"":" open");
+    hdr.innerHTML = `
+      <div class="av" style="background:${p.bg};color:${p.color}">${p.ini}</div>
+      <div class="pmeta">
+        <div class="nom">${p.nom}</div>
+        <div class="sub">${p.cargo} · ${ps.acts.length} actividades</div>
+      </div>
+      <div class="pbar-w">
+        <div class="pbar-l" id="pl-${p.id}">${pc}% completo</div>
+        <div class="pbar"><div class="pbar-f" id="pf-${p.id}" style="width:${pc}%;background:${p.color}"></div></div>
+      </div>
+      <span class="chev ${ps.collapsed?"collapsed":""}" id="chev-${p.id}">⌄</span>
+    `;
+    hdr.onclick = () => toggleP(p.id);
+    div.appendChild(hdr);
+
+    if(!ps.collapsed) {
+      // Tipo strip
+      const strip = document.createElement("div");
+      strip.className = "tstrip";
+      strip.id = "ts-"+p.id;
+      strip.innerHTML = tipoStrip(cnt);
+      div.appendChild(strip);
+
+      // Table
+      const wrap = document.createElement("div");
+      wrap.className = "act-wrap";
+      const tbl = document.createElement("table");
+      tbl.className = "acts";
+      tbl.innerHTML = `<thead><tr>
+        <th style="width:32%">Actividad</th>
+        <th style="width:13%">Tipo</th>
+        <th style="width:13%">Cumplimiento</th>
+        <th style="width:7%">Cant.</th>
+        <th style="width:30%">Observaciones / fechas / contexto</th>
+        <th style="width:5%"></th>
+      </tr></thead>`;
+      const tbody = document.createElement("tbody");
+      tbody.id = "tb-"+p.id;
+
+      const base = ps.acts.filter(a=>a.base);
+      const news = ps.acts.filter(a=>!a.base);
+
+      if(base.length) {
+        const sr = document.createElement("tr");
+        sr.className = "sec-lbl";
+        sr.innerHTML = `<td colspan="6">Actividades del perfil rediseñado</td>`;
+        tbody.appendChild(sr);
+        base.forEach(a => tbody.appendChild(makeRow(a, p.id, ps.acts.indexOf(a))));
+      }
+      if(news.length) {
+        const sr = document.createElement("tr");
+        sr.className = "sec-lbl";
+        sr.innerHTML = `<td colspan="6">Actividades nuevas del mes</td>`;
+        tbody.appendChild(sr);
+        news.forEach(a => tbody.appendChild(makeRow(a, p.id, ps.acts.indexOf(a))));
+      }
+
+      tbl.appendChild(tbody);
+      wrap.appendChild(tbl);
+      div.appendChild(wrap);
+
+      // Add row
+      const ar = document.createElement("div");
+      ar.className = "add-row";
+      ar.innerHTML = `
+        <input type="text" placeholder="Nueva actividad del mes..." id="ni-${p.id}">
+        <select id="nt-${p.id}">
+          ${Object.entries(TIPOS).map(([k,v])=>`<option value="${k}"${k==="gc"?" selected":""}>${v.l}</option>`).join("")}
+        </select>
+        <button onclick="addAct('${p.id}')">+ Agregar</button>
+        <span class="add-err" id="ae-${p.id}"></span>
+      `;
+      div.appendChild(ar);
+    }
+
+    main.appendChild(div);
+  });
+}
+
+function tipoStrip(cnt) {
+  return Object.entries(cnt).filter(([,v])=>v>0)
+    .map(([k,v])=>`<span class="tb ${TIPOS[k].cls}">${TIPOS[k].l}: <strong>${v}</strong></span>`).join("");
+}
+
+function makeRow(a, pid, idx) {
+  const tr = document.createElement("tr");
+  const cc = a.cum==="total"?"c-total":a.cum==="parcial"?"c-parcial":a.cum==="sin"?"c-sin":"";
+  const tc = "ts t-"+a.t;
+
+  tr.innerHTML = `
+    <td style="font-size:12.5px;line-height:1.4">${a.n}</td>
+    <td>
+      <select class="${tc}" data-pid="${pid}" data-idx="${idx}" onchange="setTipo(this)">
+        ${Object.entries(TIPOS).map(([k,v])=>`<option value="${k}"${k===a.t?" selected":""}>${v.l}</option>`).join("")}
+      </select>
+    </td>
+    <td>
+      <select class="cs ${cc}" data-pid="${pid}" data-idx="${idx}" onchange="setCum(this)">
+        <option value="">— seleccionar</option>
+        <option value="total"  ${a.cum==="total"  ?"selected":""}>✓ Total</option>
+        <option value="parcial"${a.cum==="parcial"?"selected":""}>◑ Parcial</option>
+        <option value="sin"    ${a.cum==="sin"    ?"selected":""}>✕ Sin realización</option>
+      </select>
+    </td>
+    <td><input class="qty" type="number" min="0" placeholder="#"
+      value="${a.qty||""}" data-pid="${pid}" data-idx="${idx}"
+      onchange="setQty(this)"></td>
+    <td><input class="obs" type="text"
+      placeholder="Ej: 3 informes enviados el 12/09, pendiente sede norte..."
+      value="${esc(a.obs||"")}" data-pid="${pid}" data-idx="${idx}"
+      onchange="setObs(this)"></td>
+    <td>${!a.base?`<button class="del" data-pid="${pid}" data-idx="${idx}" onclick="delAct(this)" title="Eliminar">✕</button>`:""}</td>
+  `;
+  return tr;
+}
+
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+
+function renderKpis() {
+  const k = kpis_global();
+  document.getElementById("kpis").innerHTML = `
+    <div class="kpi"><div class="l">Período</div><div class="v" style="font-size:16px;color:var(--verde)">${S.mes||"—"} ${S.anio||""}</div></div>
+    <div class="kpi ${k.pct>=80?"ok":k.pct>=50?"warn":"bad"}"><div class="l">Cumplimiento equipo</div><div class="v">${k.pct}%</div></div>
+    <div class="kpi ok"><div class="l">Completadas</div><div class="v">${k.c}</div></div>
+    <div class="kpi warn"><div class="l">Parciales</div><div class="v">${k.pa}</div></div>
+    <div class="kpi bad"><div class="l">Sin realización</div><div class="v">${k.sn}</div></div>
+    <div class="kpi neu"><div class="l">Total actividades</div><div class="v">${k.tot}</div></div>
+  `;
+}
+
+function toggleP(pid) {
+  S.perfiles[pid].collapsed = !S.perfiles[pid].collapsed;
+  guardar(); render();
+}
+
+function setTipo(sel) {
+  const pid=sel.dataset.pid, idx=+sel.dataset.idx;
+  S.perfiles[pid].acts[idx].t = sel.value;
+  sel.className = "ts t-"+sel.value;
+  const strip = document.getElementById("ts-"+pid);
+  if(strip) strip.innerHTML = tipoStrip(tipos_cnt(S.perfiles[pid].acts));
+  guardar();
+}
+
+function setCum(sel) {
+  const pid=sel.dataset.pid, idx=+sel.dataset.idx;
+  S.perfiles[pid].acts[idx].cum = sel.value;
+  sel.className = "cs"+(sel.value?" c-"+sel.value:"");
+  updatePbar(pid); renderKpis(); guardar();
+}
+
+function setQty(inp){ S.perfiles[inp.dataset.pid].acts[+inp.dataset.idx].qty=inp.value; guardar(); }
+function setObs(inp){ S.perfiles[inp.dataset.pid].acts[+inp.dataset.idx].obs=inp.value; guardar(); }
+
+function updatePbar(pid) {
+  const pc = perfil_pct(pid);
+  const f = document.getElementById("pf-"+pid); if(f) f.style.width=pc+"%";
+  const l = document.getElementById("pl-"+pid); if(l) l.textContent=pc+"% completo";
+}
+
+function addAct(pid) {
+  const inp = document.getElementById("ni-"+pid);
+  const err = document.getElementById("ae-"+pid);
+  if(!inp.value.trim()){ err.textContent="Escribe el nombre de la actividad."; return; }
+  err.textContent="";
+  const t = document.getElementById("nt-"+pid).value;
+  S.perfiles[pid].acts.push({n:inp.value.trim(),t,base:false,cum:"",qty:"",obs:""});
+  inp.value=""; guardar(); render();
+}
+
+function delAct(btn) {
+  S.perfiles[btn.dataset.pid].acts.splice(+btn.dataset.idx,1);
+  guardar(); render();
+}
+
+function exportar() {
+  if(!S.mes){ document.getElementById("exp-out").innerHTML=`<p style="color:var(--danger);font-size:12px;margin-top:6px">Carga un mes primero.</p>`; return; }
+  const k = kpis_global();
+  let t = `INFORME DE PRODUCTIVIDAD — SALUD PÚBLICA IPS\n`;
+  t += `Período: ${S.mes} ${S.anio}   ·   Coordinadora: Kelly Díaz Durán\n`;
+  t += "─".repeat(55)+"\n\n";
+  t += `RESUMEN EQUIPO\nTotal: ${k.tot}  Completadas: ${k.c} (${k.pct}%)  Parciales: ${k.pa}  Sin realización: ${k.sn}\n\n`;
+
+  PERFILES_DEF.forEach(p => {
+    const ps = S.perfiles[p.id]; if(!ps) return;
+    const pc = perfil_pct(p.id);
+    const cnt = tipos_cnt(ps.acts);
+    const tpStr = Object.entries(cnt).filter(([,v])=>v>0).map(([k,v])=>`${TIPOS[k].l}: ${v}`).join(" | ");
+    t += "─".repeat(55)+"\n";
+    t += `${p.nom.toUpperCase()}  —  ${p.cargo}\nCumplimiento: ${pc}%   ${tpStr}\n\n`;
+    const CUM_I = {total:"✓ TOTAL",parcial:"◑ PARCIAL",sin:"✕ SIN REAL.","":" ○ Sin registrar"};
+    [["Perfil rediseñado", ps.acts.filter(a=>a.base)],
+     ["Nuevas del mes",    ps.acts.filter(a=>!a.base)]].forEach(([lbl,arr])=>{
+      if(!arr.length) return;
+      t += `[${lbl}]\n`;
+      arr.forEach(a => {
+        const q = a.qty ? ` [${a.qty} unid.]` : "";
+        const ob = a.obs ? `\n     → ${a.obs}` : "";
+        t += `  ${CUM_I[a.cum]||"○"}  ${a.n}${q}  (${TIPOS[a.t]?.l||a.t})${ob}\n`;
+      });
+      t += "\n";
+    });
+  });
+  t += "─".repeat(55)+"\n";
+  t += `Generado: ${new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"long",year:"numeric"})}\n`;
+
+  const area = document.getElementById("exp-out");
+  area.innerHTML = "";
+  const btn = document.createElement("button");
+  btn.className = "copy-btn"; btn.textContent = "📋 Copiar texto";
+  btn.onclick = () => navigator.clipboard.writeText(t).then(()=>btn.textContent="✓ Copiado");
+  const pre = document.createElement("pre");
+  pre.className = "out"; pre.textContent = t;
+  area.appendChild(btn); area.appendChild(pre);
+}
+
+function historial() {
+  const area = document.getElementById("hist-out");
+  area.innerHTML = "";
+  const found = [];
+  for(let i=0; i<localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if(!k.startsWith("sp_prod_")) continue;
+    try {
+      const sv = JSON.parse(localStorage.getItem(k));
+      let tot=0,c=0,pa=0,sn=0;
+      Object.values(sv.perfiles||{}).forEach(ps=>ps.acts?.forEach(a=>{
+        tot++; if(a.cum==="total")c++; else if(a.cum==="parcial")pa++; else if(a.cum==="sin")sn++;
+      }));
+      found.push({mes:sv.mes,anio:sv.anio,tot,c,pa,sn,pct:tot?Math.round(c/tot*100):0});
+    } catch(e) {}
+  }
+  if(!found.length) {
+    area.innerHTML=`<p style="font-size:12px;color:var(--muted);margin-top:6px">Aún no hay meses guardados.</p>`;
+    return;
+  }
+  found.sort((a,b) => a.anio!==b.anio ? a.anio-b.anio : MESES.indexOf(a.mes)-MESES.indexOf(b.mes));
+  const wrap = document.createElement("div"); wrap.className="hist-wrap";
+  found.forEach(f => {
+    const row = document.createElement("div"); row.className="hist-row";
+    row.innerHTML=`<span class="hist-m">${f.mes} ${f.anio}</span>
+      <span class="hist-s">${f.c}/${f.tot} completadas (${f.pct}%) · Parciales: ${f.pa} · Sin: ${f.sn}</span>
+      <button onclick="irMes('${f.mes}','${f.anio}')">Abrir →</button>`;
+    wrap.appendChild(row);
+  });
+  area.appendChild(wrap);
+}
+
+function irMes(mes, anio) {
+  document.getElementById("sel-mes").value = mes;
+  document.getElementById("sel-anio").value = anio;
+  document.getElementById("hist-out").innerHTML = "";
+  cargar();
+}
+
+// Inicializar con el mes actual
+(function(){
+  const now = new Date();
+  const m = MESES[now.getMonth()];
+  const a = String(now.getFullYear());
+  document.getElementById("sel-mes").value = m;
+  const aEl = document.getElementById("sel-anio");
+  for(let i=0;i<aEl.options.length;i++) if(aEl.options[i].value===a){aEl.selectedIndex=i;break;}
+  cargar();
+})();
+</script>
+</body>
+</html>
